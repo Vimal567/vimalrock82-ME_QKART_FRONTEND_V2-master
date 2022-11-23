@@ -1,0 +1,188 @@
+import { Button, CircularProgress, Stack, TextField } from "@mui/material";
+import { Box } from "@mui/system";
+import axios from "axios";
+import { useSnackbar } from "notistack";
+import React, { useState } from "react";
+import { useHistory, Link } from "react-router-dom";
+import { config } from "../App";
+import Footer from "./Footer";
+import Header from "./Header";
+import "./Register.css";
+
+export const Register = () => {
+  const { enqueueSnackbar } = useSnackbar();    //It is a short description notification from bottom of page
+
+  const person = {
+    username: "",
+    password: "",
+    confirmPassword: ""
+  }
+
+  const [Users, setUsers] = useState(person);
+  const [loading, setLoading] = useState(false);  //It is used for the loading circle UI while posting when register now clicked
+  const history= useHistory();  //This saves the path of the browser history where our page recdirected
+
+  // TODO: CRIO_TASK_MODULE_REGISTER - Implement the register function
+  /**
+   * Definition for register handler
+   * - Function to be called when the user clicks on the register button or submits the register form
+   *
+   * @param {{ username: string, password: string, confirmPassword: string }} formData
+   *  Object with values of username, password and confirm password user entered to register
+   *
+   * API endpoint - "POST /auth/register"
+   *
+   * Example for successful response from backend for the API call:
+   * HTTP 201
+   * {
+   *      "success": true,
+   * }
+   *
+   * Example for failed response from backend for the API call:
+   * HTTP 400
+   * {
+   *      "success": false,
+   *      "message": "Username is already taken"
+   * }
+   */
+  const register = async (formData) => {
+    console.log(Users);
+    const FullFormData = { ...formData }
+    try { 
+      setLoading(true);
+      const res = await axios.post(`${config.endpoint}/auth/register`, FullFormData);
+      const data = res.data;
+      console.log(data);
+      setLoading(false);
+      enqueueSnackbar('Registered Successfully',{ 
+        variant: 'success',
+      })
+      history.push("/login",{ from: "Register" });
+    } catch (e) {
+      console.log(e.response);
+      setLoading(true);
+      if (e.response && e.response.status === 400)
+      {
+      setLoading(false); 
+      return  enqueueSnackbar( e.response.data.message, { variant: 'error'});
+      }
+      else {
+      setLoading(false); 
+      enqueueSnackbar( "Something went wrong. Check that the backend is running, reachable and returns valid JSON.", { variant: 'error'});
+      }
+    }
+  };
+
+  // TODO: CRIO_TASK_MODULE_REGISTER - Implement user input validation logic
+  /**
+   * Validate the input values so that any bad or illegal values are not passed to the backend.
+   *
+   * @param {{ username: string, password: string, confirmPassword: string }} data
+   *  Object with values of username, password and confirm password user entered to register
+   *
+   * @returns {boolean}
+   *    Whether validation has passed or not
+   *
+   * Return false if any validation condition fails, otherwise return true.
+   * (NOTE: The error messages to be shown for each of these cases, are given with them)
+   * -    Check that username field is not an empty value - "Username is a required field"
+   * -    Check that username field is not less than 6 characters in length - "Username must be at least 6 characters"
+   * -    Check that password field is not an empty value - "Password is a required field"
+   * -    Check that password field is not less than 6 characters in length - "Password must be at least 6 characters"
+   * -    Check that confirmPassword field has the same value as password field - Passwords do not match
+   */
+  const handleInput = (e) => {
+    const name = e.target.name;
+    const  value = e.target.value;
+    setUsers(Users => ({ ...Users, [name]:value}))
+  };
+  const validateInput = (data) => {
+    let ValidData = {...data}
+    if(!ValidData.username){
+      enqueueSnackbar("Username is required", {variant: "warning"});
+      return false;
+    }
+    if(ValidData.username.length < 6) {
+      enqueueSnackbar("Username must be atleast 6 characters", {variant: "warning"})
+      return false;
+    }
+    if(!ValidData.password) {
+      enqueueSnackbar("Password is required", {variant: 'warning'})
+      return false;
+    }
+    if(ValidData.password.length < 6)
+    {
+      enqueueSnackbar("Password must be at least 6 characters",{ variant: 'warning'})
+      return false
+    }
+    if(ValidData.password!==ValidData.confirmPassword)
+    {
+      enqueueSnackbar("Passwords do not match",{ variant: 'warning',})
+      return false
+    }
+    delete ValidData.confirmPassword;
+    return register(ValidData);
+  };
+
+  return (
+    <Box
+      display="flex"
+      flexDirection="column"
+      justifyContent="space-between"
+      minHeight="100vh"
+    >
+      <Header hasHiddenAuthButtons={false}/>
+      <Box className="content">
+        <Stack spacing={2} className="form">
+          <h2 className="title">Register</h2>
+          <TextField
+            id="username"
+            label="Username"
+            variant="outlined"
+            title="Username"
+            name="username"
+            placeholder="Enter Username"
+            fullWidth
+            value={Users.username}
+            onChange={handleInput}
+          />
+          <TextField
+            id="password"
+            variant="outlined"
+            label="Password"
+            name="password"
+            type="password"
+            helperText="Password must be atleast 6 characters length"
+            fullWidth
+            placeholder="Enter a password with minimum 6 characters"
+            value={Users.password}
+            onChange={handleInput}
+          />
+          <TextField
+            id="confirmPassword"
+            variant="outlined"
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            fullWidth
+            value={Users.confirmPassword}
+            onChange={handleInput}
+          />
+          {loading === true ? 
+          <Box display="flex" flexDirection="row" justifyContent="center"> 
+          <CircularProgress className="loading" color="success"/></Box>:
+           <Button className="button" variant="contained" onClick={()=>validateInput(Users)}>
+            Register Now
+           </Button>}
+          <p className="secondary-action">
+            Already have an account?{" "}
+             <Link className="link" to="/login">Login here</Link>
+          </p>
+        </Stack>
+      </Box>
+      <Footer />
+    </Box>
+  );
+};
+
+export default Register;
